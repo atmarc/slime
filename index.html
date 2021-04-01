@@ -5,12 +5,78 @@
 		<title>Slime simulation</title>
 		<style>
 			body { margin: 0; }
-			canvas { display: block; }
+			canvas {
+				display: block;
+			}
 		</style>
 	</head>
 	<body>
 		<canvas id="myCanvas"></canvas>
+		
+		<!-- Script for checking webgl errors -->
+		<script src="https://greggman.github.io/webgl-lint/webgl-lint.js"></script>
+
+
+		<script id="vertex-shader-2d" type="x-shader/x-vertex">
+			attribute vec4 position;
+			attribute vec2 a_texcoord;
+
+			varying vec2 v_texcoord;
+
+			void main() {
+				gl_Position = position;
+
+				// Pass the texcoord to the fragment shader.
+				v_texcoord = a_texcoord;
+			}
+		</script>
+		
+		<script id="fragment-shader-2d" type="x-shader/x-fragment">
+			precision mediump float;
+			
+			uniform vec2 u_textureSize;
+			uniform sampler2D u_texture;
+			uniform int u_prerender;
+
+			// Passed in from the vertex shader.
+			varying vec2 v_texcoord;
+			
+			bool pos_ok(in vec2 pos) {
+				return pos.x >= 0.0 && pos.x <= 1.0 && pos.y >= 0.0 && pos.y <= 1.0;
+			}
+
+			void main() {
+				vec2 onePixel = vec2(1.0/u_textureSize.x, 1.0/u_textureSize.y);
+				vec2 pos = vec2(v_texcoord.x, v_texcoord.y + onePixel.y);
+				
+				if (u_prerender == 1) {
+					
+				}
+
+				vec4 color = texture2D(u_texture, v_texcoord);
+				if (color.x == 1.0 && color.y == 1.0 && color.z == 1.0) {
+					gl_FragColor = color;
+				}
+				else if (pos_ok(pos)) {
+					vec4 sum = vec4(0);
+					for (float i = -1.; i <= 1.; ++i) {
+						for (float j = -1.; j <= 1.; ++j) {
+							vec2 tmp = vec2(pos.x + i*onePixel.x, pos.y + j*onePixel.y);
+							sum += texture2D(u_texture, tmp);
+						}
+					}
+
+					gl_FragColor = sum / 9.0;
+					
+				} else {
+					gl_FragColor = vec4(0,0,0,255);
+				}
+				
+			}	
+		</script>
+		<script src="js/webgl-utils.js"></script>
 		<script src="js/draw.js"></script>
-		<script src="js/main.js"></script>
+		<script src="js/slime_webgl.js"></script>
+
 	</body>
 </html>
