@@ -39,8 +39,11 @@ void main() {
         }
 
         vec4 average = sum / (9.0 - not_ok);
-        float diffusion = 0.001;
+        float diffusion = 0.003;
+        average.x = max(0., average.x - diffusion);
+        average.y = max(0., average.y - diffusion);
+        average.z = max(0., average.z - diffusion);
 
-        gl_FragColor = average - diffusion;
+        gl_FragColor = average;
     }
 }	

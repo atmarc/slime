@@ -124,30 +124,106 @@ function main () {
     var positionBuffer = gl.createBuffer();
 
     var n_agents = 1000;
+    var agents_angles = new Array(n_agents);
     for (let i = 0; i < n_agents; ++i) {
-        agents_positions.push(Math.random() * 2 - 1, Math.random() * 2 - 1);
+        let x = Math.random() * 2 - 1;
+        let y = Math.random() * 2 - 1;
+        agents_positions.push(x, y);
+        // agents_positions.push(Math.random() * 2 - 1, Math.random() * 2 - 1);
+        // agents_angles[i] = angle_pointing_center(x, y);
+        agents_angles[i] = Math.PI * 2 * Math.random();
     }
 
     var fb_pixels = gl.createFramebuffer();
     
-    function read_pixel(x, y) {
-        var pixels = new Uint8Array(gl.canvas.width * gl.canvas.height * 4);
-        gl.readPixels(x, y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-        return pixels;    
+    function pbc(x, y) {
+        let new_x = x < 0 ? gl.canvas.width + x : x % gl.canvas.width;
+        let new_y = y < 0 ? gl.canvas.height + y : y % gl.canvas.height;
+        return [new_x, new_y];
+    }
+
+    function sensors(x, y, angle, pixels) {
+        let VIEW_LEN = 7;
+        let TURN_ANGLE = Math.PI / 4;
+
+        var read_pixel = (i, j) => {
+            let index = (j + i * gl.canvas.width) * 4;
+            return [
+                pixels[index],
+                pixels[index + 1],
+                pixels[index + 2],
+                pixels[index + 3],
+            ];
+        }
+
+        let x1 = Math.round(x + VIEW_LEN * Math.cos(angle));
+        let y1 = Math.round(y + VIEW_LEN * Math.sin(angle));
+        let pos = pbc(x1, y1);
+        let center = read_pixel(pos[1], pos[0])[0];
+
+        let x2 = Math.round(x + VIEW_LEN * Math.cos(angle - TURN_ANGLE));
+        let y2 = Math.round(y + VIEW_LEN * Math.sin(angle - TURN_ANGLE));
+        pos = pbc(x2, y2);
+        let left = read_pixel(pos[1], pos[0])[0];
+
+        let x3 = Math.round(x + VIEW_LEN * Math.cos(angle + TURN_ANGLE));
+        let y3 = Math.round(y + VIEW_LEN * Math.sin(angle + TURN_ANGLE));
+        pos = pbc(x3, y3);
+        let right = read_pixel(pos[1], pos[0])[0];
+
+        return [left, center, right];
+    }
+
+    function decide_turn(left, center, right) {
+        let TURN_ANGLE = Math.PI / 4;
+        
+        let add_angle = 0;
+        if (center > left && center > right) {
+            add_angle = 0;
+        }
+        else if (left > center && right > center) {
+            add_angle = TURN_ANGLE;
+            if (Math.random() > 0.5) add_angle = -TURN_ANGLE;
+        }
+        else if (right > left) {
+            add_angle = TURN_ANGLE;
+        }
+        
+        else if (left > right) {
+            add_angle = -TURN_ANGLE;
+        }
+
+        add_angle *= Math.random();
+        return add_angle;
     }
 
     function update_points() {
+        let VEL = 1;
+
+        // read texture
         gl.bindFramebuffer(gl.FRAMEBUFFER, fb_pixels);
         gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, tex1, 0);
+        var pixels = new Uint8Array(gl.canvas.width * gl.canvas.height * 4);
+        gl.readPixels(0, 0, gl.canvas.width, gl.canvas.height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
         for (let i = 0; i < agents_positions.length; i += 2) {
             let x = ((agents_positions[i] + 1) / 2) * gl.canvas.width;
             let y = (agents_positions[i + 1] + 1) / 2 * gl.canvas.height;
             // TODO: fer sensors i tal amb read_pixel
-        }   
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-    }
 
+            let add_angle = decide_turn(...sensors(x, y, agents_angles[i], pixels));
+            agents_angles[i] += add_angle;
+
+            let new_x = x + Math.cos(agents_angles[i]) * VEL;
+            let new_y = y + Math.sin(agents_angles[i]) * VEL;
+            
+            pos = pbc(new_x, new_y);
+    
+            agents_positions[i] = (pos[0] / gl.canvas.width) * 2 - 1;
+            agents_positions[i + 1] = (pos[1] / gl.canvas.height) * 2 - 1;
+        }   
+    }
     function render() {
         update_points();
         
@@ -243,7 +319,11 @@ function main () {
         if (event.code === 'Space') {
             pause = !pause;
             if (!pause) {
+                console.log('play')
                 window.requestAnimationFrame(render);
+            }
+            else {
+                console.log('pause')
             }
         }
     })

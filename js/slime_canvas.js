@@ -4,7 +4,7 @@ d.setWidth(window.innerWidth);
 // d.setHeight(500);
 // d.setWidth(500);
 
-const N_AGENTS = 10000;
+const N_AGENTS = 50000;
 const TRACE_LEN = 300;
 const VIEW_LEN = 15;
 const VEL = 1;
