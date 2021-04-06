@@ -58,12 +58,8 @@ const compute_pos_vs = `
 attribute vec4 position;
 attribute vec2 a_texcoord;
 
-varying vec2 v_texcoord;
-
 void main() {
     gl_Position = position;
-    // Pass the texcoord to the fragment shader.
-    v_texcoord = a_texcoord;
 }
 `
 // -----------------------------------------------------------------------------------------
@@ -77,16 +73,11 @@ uniform vec2 u_prev_tex_size;
 uniform sampler2D u_tex_pos;
 uniform sampler2D u_tex_prev;
 
-// Passed in from the vertex shader.
-varying vec2 v_texcoord;
-
 void main() {
-    vec2 onePixel = vec2(1.0/u_pos_tex_size.x, 1.0/u_pos_tex_size.y);
-    
-    vec4 agent_data = texture2D(u_tex_pos, v_texcoord);
-    agent_data.x += onePixel.x;
-
-    gl_FragColor = agent_data;
+    vec2 texcoord = gl_FragCoord.xy / u_pos_tex_size;
+    vec2 onePixel = vec2(1.0/u_prev_tex_size.x, 1.0/u_prev_tex_size.y);
+    vec4 agent_data = texture2D(u_tex_pos, texcoord);
+    gl_FragColor = vec4(agent_data.xy + onePixel, agent_data.z, 1);
 }
 
 `
@@ -99,6 +90,8 @@ attribute float id;
 uniform vec2 u_pos_tex_size;
 uniform sampler2D u_tex_pos;
 
+varying float v_id;
+
 vec4 getValueFrom2DTextureAs1DArray(sampler2D tex, vec2 dimensions, float index) {
     float y = floor(index / dimensions.x);
     float x = mod(index, dimensions.x);
@@ -110,17 +103,18 @@ void main() {
 
     vec4 agent_data = getValueFrom2DTextureAs1DArray(u_tex_pos, u_pos_tex_size, id);
     gl_Position = vec4(agent_data.xy, 0, 1);
-    
-    gl_PointSize = 1.0;
+    v_id = id;
+    gl_PointSize = 10.0;
 }`
 
 // -----------------------------------------------------------------------------------------
 
 const draw_pos_fs = `
 precision mediump float;
+varying float v_id;
 
 void main() {
-        gl_FragColor = vec4(255,255,255,255);
+        gl_FragColor = vec4(1,0,0,1);
 }	
 `
 
