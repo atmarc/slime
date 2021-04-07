@@ -4,7 +4,7 @@ d.setWidth(window.innerWidth);
 // d.setHeight(500);
 // d.setWidth(500);
 
-const N_AGENTS = 50000;
+const N_AGENTS = 10000;
 const TRACE_LEN = 300;
 const VIEW_LEN = 15;
 const VEL = 1;
@@ -126,7 +126,7 @@ function render_frame() {
             if (trace_mat[i][j] > 0) {
                 trace_mat[i][j] -= EVAPORATE;
                 let px_color = trace_mat[i][j] * color_ratio;
-                put_image_data(index, px_color, 0, 0);
+                put_image_data(index, px_color, px_color, px_color);
             } 
             // ---------- Code for 2 species ----------
             else if (trace_mat[i][j] < 0) {
@@ -185,10 +185,10 @@ for (let i = 0; i < trace_mat.length; ++i)
 
 var agents = [];
 for (let i = 0; i < N_AGENTS; ++i) {
-    let species = rand() > 0.5 ? 1 : -1;
-    // let species = 1;
-    // agents.push(new Agent(rand()*d.width, rand()*d.height, rand()*Math.PI*2, species));
-    agents.push(new Agent(d.width/2, d.height/2, rand()*Math.PI*2, species));
+    // let species = rand() > 0.5 ? 1 : -1;
+    let species = 1;
+    agents.push(new Agent(rand()*d.width, rand()*d.height, rand()*Math.PI*2, species));
+    // agents.push(new Agent(d.width/2, d.height/2, rand()*Math.PI*2, species));
 }
 
 

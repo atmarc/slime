@@ -23,8 +23,13 @@ var prog1Locations = {
 var program2 = webglUtils.createProgramFromSources(gl, [compute_pos_vs, compute_pos_fs]);
 var prog2Locations = {
     position: gl.getAttribLocation(program2, "position"),
-    // prevTex: gl.getUniformLocation(program2, "u_tex_prev"),
+    time: gl.getUniformLocation(program2, "time"),
+    vel: gl.getUniformLocation(program2, "VEL"),
+    view_len: gl.getUniformLocation(program2, "VIEW_LEN"),
+    turn_angle: gl.getUniformLocation(program2, "TURN_ANGLE"),
+    prevTex: gl.getUniformLocation(program2, "u_tex_prev"),
     posTex: gl.getUniformLocation(program2, "u_tex_pos"),
+    randTex: gl.getUniformLocation(program2, "u_tex_rand"),
     posTexSize: gl.getUniformLocation(program2, "u_pos_tex_size"),
     prevTexSize: gl.getUniformLocation(program2, "u_prev_tex_size")
 }
@@ -86,15 +91,24 @@ if (gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS) < 1) {
 }
 
 
-var posTexHeight = 10;
-var posTexWidth = 10;
+var posTexHeight = 1000;
+var posTexWidth = 1000;
 var n_agents = posTexHeight * posTexWidth;
+console.log('Number of agents:', n_agents);
 
 var pos_tex_data = new Array(n_agents * 4);
 for (let i = 0; i < pos_tex_data.length; i += 4) {
-    pos_tex_data[i] = Math.random() * 2 - 1;            // x coord
-    pos_tex_data[i + 1] = Math.random() * 2 - 1;        // y coord
-    pos_tex_data[i + 2] = Math.PI * 2 * Math.random();  // angle
+    let R = 0.7;
+    let r = R * Math.sqrt(Math.random());
+    let theta = Math.random() * 2 * Math.PI;
+
+    let x = r * Math.cos(theta);
+    let y = r * Math.sin(theta);
+
+    pos_tex_data[i] = x;                                // x coord
+    pos_tex_data[i + 1] = y;                            // y coord
+    if (theta == 0) theta = Math.PI;
+    pos_tex_data[i + 2] = -theta;  // angle
     pos_tex_data[i + 3] = 0;
 }
 
@@ -107,7 +121,7 @@ var positionsFB2 = createFramebuffer(gl, positionTex2);
 // -----------------------------------------------------------------------------------------
 // Make canvas sized textures and framebuffers
 // -----------------------------------------------------------------------------------------
-var init_mat = new Array(canvas.height * canvas.width * 4);
+var init_mat = new Array(gl.canvas.height * gl.canvas.width * 4);
 for (let i = 0; i < init_mat.length; i += 4) {
     init_mat[i] = 0;
     init_mat[i + 1] = 0;
@@ -121,6 +135,12 @@ var tex2 = createTexture(gl, null, gl.canvas.width, gl.canvas.height,  gl.UNSIGN
 // make a framebuffer for tex1
 var fb1 = createFramebuffer(gl, tex1);
 var fb2 = createFramebuffer(gl, tex2);
+// -----------------------------------------------------------------------------------------
+// Make noise texture
+// -----------------------------------------------------------------------------------------
+var noiseData = new Array(canvas.height * canvas.width * 4);
+for (let i = 0; i < noiseData.length; ++i) noiseData[i] = Math.random();
+var randTex = createTexture(gl, new Float32Array(noiseData), gl.canvas.width, gl.canvas.height,  gl.FLOAT);
 
 // -----------------------------------------------------------------------------------------
 // Make data buffers
@@ -162,37 +182,70 @@ var t0 = performance.now();
 function render() {
     
     // Tell WebGL how to convert from clip space to pixels
+    // -----------------------------------------------------------------------------------------
+    // (prog 1) make diffusion on texture
+    // -----------------------------------------------------------------------------------------
+
+    gl.useProgram(program1);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb2);
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, canvasPositionBuffer);
+    gl.vertexAttribPointer(prog1Locations.position, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(prog1Locations.position);
     
-    // -------------------------- Program 2 --------------------------
+    gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+    gl.vertexAttribPointer(prog1Locations.texcoord, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(prog1Locations.texcoord);
+
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, tex1);
+
+    gl.uniform1i(prog1Locations.prevTex, 0);  
+    gl.uniform2f(prog1Locations.prevTexSize, gl.canvas.width, gl.canvas.height);
+
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
+    // -----------------------------------------------------------------------------------------
+    // (prog 2) current_pos --(with old_text)--> new_positions
+    // -----------------------------------------------------------------------------------------
+    
     gl.useProgram(program2);
     
-    // output from fragment shader
     gl.bindFramebuffer(gl.FRAMEBUFFER, positionsFB2);
     gl.viewport(0, 0, posTexWidth, posTexHeight);
     
-    gl.bindBuffer(gl.ARRAY_BUFFER, canvasPositionBuffer);        
+    gl.bindBuffer(gl.ARRAY_BUFFER, canvasPositionBuffer);
     gl.vertexAttribPointer(prog2Locations.position, 2, gl.FLOAT, false, 0, 0);
     gl.enableVertexAttribArray(prog2Locations.position);
     
-    // gl.activeTexture(gl.TEXTURE0);
-    // gl.bindTexture(gl.TEXTURE_2D, tex1);
-    gl.activeTexture(gl.TEXTURE0 + 1);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, tex2);
+    gl.activeTexture(gl.TEXTURE1);
     gl.bindTexture(gl.TEXTURE_2D, positionTex1);
+    gl.activeTexture(gl.TEXTURE2);
+    gl.bindTexture(gl.TEXTURE_2D, randTex);
 
     // set the uniforms
-    gl.uniform2f(prog2Locations.posTexSize, posTexWidth, posTexHeight);
-    gl.uniform2f(prog2Locations.prevTexSize, gl.canvas.width, gl.canvas.height);
+    gl.uniform1i(prog2Locations.prevTex, 0);  
     gl.uniform1i(prog2Locations.posTex, 1);  
-    // gl.uniform1i(prog2Locations.prevTex, 0);  
-    
+    gl.uniform1i(prog2Locations.randTex, 2);  
+    gl.uniform1f(prog2Locations.time, performance.now());  
+    gl.uniform1f(prog2Locations.vel, 3);  
+    gl.uniform1f(prog2Locations.view_len, 10);  
+    gl.uniform1f(prog2Locations.turn_angle, Math.PI / 4);  
+    gl.uniform2f(prog2Locations.prevTexSize, gl.canvas.width, gl.canvas.height);
+    gl.uniform2f(prog2Locations.posTexSize, posTexWidth, posTexHeight);
     
     gl.drawArrays(gl.TRIANGLES, 0, 6);
 
+    // -----------------------------------------------------------------------------------------
+    // (prog 3) old_text draw new_pos --> new_text
+    // -----------------------------------------------------------------------------------------
 
-    // -------------------------- Program 3 --------------------------
     gl.useProgram(program3);
     gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb2);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, idBuffer);        
     gl.vertexAttribPointer(prog3Locations.ids, 1, gl.FLOAT, false, 0, 0);
@@ -201,27 +254,35 @@ function render() {
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, positionTex2);        
 
+    gl.uniform1i(prog3Locations.posTex, 0);  
     gl.uniform2f(prog3Locations.posTexSize, posTexWidth, posTexHeight);
-    // gl.uniform1i(prog3Locations.posTex, 0);  
 
     gl.drawArrays(gl.POINTS, 0, n_agents);
 
-    // // -------------------------- Draw to canvas --------------------------
-    // gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-    // gl.bindBuffer(gl.ARRAY_BUFFER, canvasPositionBuffer);        
+    // -----------------------------------------------------------------------------------------
+    // (prog 4) new_text draw to screen
+    // -----------------------------------------------------------------------------------------
 
-    // gl.uniform1i(prerenderLocation, 2);
+    gl.useProgram(program4);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
 
-    // // render to canvas so we can see it
-    // gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.bindBuffer(gl.ARRAY_BUFFER, canvasPositionBuffer);
+    gl.vertexAttribPointer(prog4Locations.position, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(prog4Locations.position);
+    
+    gl.bindBuffer(gl.ARRAY_BUFFER, texCoordBuffer);
+    gl.vertexAttribPointer(prog4Locations.texcoord, 2, gl.FLOAT, false, 0, 0);
+    gl.enableVertexAttribArray(prog4Locations.texcoord);
 
-    // // input to fragment shader, the texture we just rendered to
-    // gl.bindTexture(gl.TEXTURE_2D, tex2);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, tex2);
 
-    // gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
-    // gl.enableVertexAttribArray(positionLocation);
+   
+    gl.uniform1i(prog4Locations.prevTex, 0);  
 
-    // gl.drawArrays(gl.TRIANGLES, 0, 6);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+
 
     // -------------------------- Swap the textures --------------------------
     // swap which texture we are rendering from and to
@@ -230,6 +291,7 @@ function render() {
     [positionTex1, positionTex2] = [positionTex2, positionTex1];
     [positionsFB1, positionsFB2] = [positionsFB2, positionsFB1];
 
+    // ------------------------------ Compute fps ------------------------------
     if (frame % 100 == 0) {
         let t1 = performance.now();
         let dt = (t1 - t0) / 1000;
@@ -238,12 +300,8 @@ function render() {
         frame = 0;
         t0 = t1;
     }
-
     ++frame;
-    // get the result
-    // const results = new Uint8Array(posTexHeight * posTexWidth * 4);
-    // gl.readPixels(0, 0, posTexWidth, posTexHeight, gl.RGBA, gl.UNSIGNED_BYTE, results);
-    // console.log(results);
+    
     if (!pause) window.requestAnimationFrame(render);
 }
 
