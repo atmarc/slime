@@ -130,7 +130,6 @@ void main() {
     }
 
     add_angle *= rand_val2;
-    
 
     float new_angle = angle + add_angle;
     float new_x = agent_data.x + cos(new_angle) * onePixel.x * VEL;

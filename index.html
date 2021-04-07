@@ -4,24 +4,105 @@
 		<meta charset="utf-8">
 		<title>Slime simulation</title>
 		<style>
-			body { margin: 0; }
 			canvas {
 				display: block;
+			}
+			.big-container {
+				position: absolute;
+				top: 1rem;
+				left: 1rem;
+				z-index: 1;
+			}
+			.params-container {
+				background-color: rgba(255, 255, 255, 0.7);
+				padding: 1rem 2rem;
+				border-radius: 1rem;
+			}
+			
+			.input-container {
+				display: grid;
+				grid-template-columns: 75% 25%;
+			}
+			body {
+				margin: 0;
+				font-family: system-ui;
+				font-size: small;
+			}
+
+			.outputvalue {
+				border: 0;
+				text-align: center;
+			}
+			
+			.fps-disp {
+				position: absolute;
+				z-index: 1;
+				top: 2rem;
+				right: 2rem;
+				color: white;
+			}
+
+			.buttons-container {
+				display: grid;
+				place-items: center;
+				margin-top: 2rem;
+			}
+			.play-button {
+				padding: 0.3rem 1rem;
 			}
 		</style>
 	</head>
 	<body>
-		<div class="inputs-container">
-			<h2>Inputs for the simulation</h2>
-			<p>Turn angle:</p>
-			<input type="range" step="0.1" min="0.1" max="3.141592653589793" value="0.7853981633974483" oninput="updateParameter(this.value, 'TURN_ANGLE')">
+		<span class="fps-disp"></span>
+		<div class="big-container">
+			<div class="params-container">
+				<h3 style="text-align: center; margin: 0;">Parameters</h3>
+				<p>Turn angle:</p>
+				<div class="input-container">
+					<input type="range" step="0.1" min="0.1" max="3.141592653589793" value="0.7853981633974483" oninput="updateParameter(this.value, 'TURN_ANGLE')">
+					<span class="outputvalue" id="disp-TURN_ANGLE"></span>
+				</div>
+				
+				<p>Velocity:</p>
+				<div class="input-container">
+					<input type="range" step="0.5" min="1" max="10" value="3" oninput="updateParameter(this.value, 'VEL')">
+					<span class="outputvalue" id="disp-VEL"></span>
+				</div>
+
+				<p>View length:</p>
+				<div class="input-container">
+					<input type="range" step="0.1" min="0.1" max="50" value="10" oninput="updateParameter(this.value, 'VIEW_LEN')">
+					<span class="outputvalue" id="disp-VIEW_LEN"></span>
+				</div>
+
+				<div class="buttons-container">
+					<button class="play-button" id="play-button" onclick="pauseSimulation()">Play</button>
+				</div>
+			</div>
+
+			<div class="params-container" style="margin-top: 1rem;">
+				<h3 style="text-align: center; margin: 0 0 1rem 0;">Init status</h3>
+				<p>Number of agents:</p>
+				<input type="number" value="100000" id="inp-N_AGENTS"oninput="updateParameter(this.value, 'N_AGENTS')">
+				
+				<p style="margin-top: 2rem;">Agents position:</p>
+				<input type="radio" id="sphere" name="init-pos" oninput="updateParameter(true, 'INIT_POS')" checked>
+				<label for="sphere">Circumference</label><br>
+				<input type="radio" id="random" name="init-pos" oninput="updateParameter(false, 'INIT_POS')">
+				<label for="random">Randomly placed</label><br>
+				
+				<p style="margin-top: 2rem;">Circumference radius:</p>
+				<div class="input-container">
+					<input type="range" step="0.05" min="0.05" max="1" value="0.7" oninput="updateParameter(this.value, 'CIRC_RADIUS')">
+					<span class="outputvalue" id="disp-CIRC_RADIUS"></span>
+				</div>
 			
-			<p>Velocity:</p>
-			<input type="range" step="0.5" min="1" max="10" value="3" oninput="updateParameter(this.value, 'VEL')">
-			
-			<p>View length:</p>
-			<input type="range" step="0.1" min="0.1" max="50" value="10" oninput="updateParameter(this.value, 'VIEW_LEN')">
+				<div style="display: grid; place-items: center;">
+					<button class="play-button" style="margin-top: 1rem;" onclick="resetSimulation()">Reset</button>
+				</div>
+			</div>
 		</div>
+
 		<canvas id="myCanvas"></canvas>
 		
 
@@ -35,16 +116,4 @@
 		<script src="js/slime_webgl.js"></script>
 	</body>
 
-	<style>
-		.inputs-container {
-			position: absolute;
-			top: 2rem;
-			left: 2rem;
-			z-index: 1;
-			background-color: white;
-			padding: 1rem 2rem;
-			border-radius: 0.3rem;
-		}
-
-	</style>
 </html>
