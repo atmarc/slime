@@ -3,6 +3,23 @@ var gl = canvas.getContext("webgl");
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
+var parameters = {
+    VEL: 3.0,
+    VIEW_LEN: 10.0,
+    TURN_ANGLE: Math.PI/4,
+}
+
+function updateParameter(value, paramName) {
+    parameters[paramName] = value;
+    console.log('Value of ' + paramName + ':', value);
+}
+
+var posTexHeight = 1000;
+var posTexWidth = 1000;
+var n_agents = posTexHeight * posTexWidth;
+console.log('Number of agents:', n_agents);
+
+
 // -----------------------------------------------------------------------------------------
 // (prog 1) make diffusion on texture
 // -----------------------------------------------------------------------------------------
@@ -91,11 +108,7 @@ if (gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS) < 1) {
 }
 
 
-var posTexHeight = 1000;
-var posTexWidth = 1000;
-var n_agents = posTexHeight * posTexWidth;
-console.log('Number of agents:', n_agents);
-
+// Init particles positions
 var pos_tex_data = new Array(n_agents * 4);
 for (let i = 0; i < pos_tex_data.length; i += 4) {
     let R = 0.7;
@@ -231,9 +244,9 @@ function render() {
     gl.uniform1i(prog2Locations.posTex, 1);  
     gl.uniform1i(prog2Locations.randTex, 2);  
     gl.uniform1f(prog2Locations.time, performance.now());  
-    gl.uniform1f(prog2Locations.vel, 3);  
-    gl.uniform1f(prog2Locations.view_len, 10);  
-    gl.uniform1f(prog2Locations.turn_angle, Math.PI / 4);  
+    gl.uniform1f(prog2Locations.vel, parameters.VEL);  
+    gl.uniform1f(prog2Locations.view_len, parameters.VIEW_LEN);  
+    gl.uniform1f(prog2Locations.turn_angle, parameters.TURN_ANGLE);  
     gl.uniform2f(prog2Locations.prevTexSize, gl.canvas.width, gl.canvas.height);
     gl.uniform2f(prog2Locations.posTexSize, posTexWidth, posTexHeight);
     
