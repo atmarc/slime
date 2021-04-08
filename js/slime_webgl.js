@@ -173,7 +173,7 @@ function initSimulation() {
     // -----------------------------------------------------------------------------------------
     // Make noise texture
     // -----------------------------------------------------------------------------------------
-    var noiseData = new Array(canvas.height * canvas.width * 4);
+    var noiseData = new Array(gl.canvas.height * gl.canvas.width * 4);
     for (let i = 0; i < noiseData.length; ++i) noiseData[i] = Math.random();
     var randTex = createTexture(gl, new Float32Array(noiseData), gl.canvas.width, gl.canvas.height,  gl.FLOAT);
 
