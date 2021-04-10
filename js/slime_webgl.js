@@ -131,7 +131,7 @@ function initSimulation() {
             let r = R * Math.sqrt(Math.random());
             let theta = Math.random() * 2 * Math.PI;
     
-            let x = r * Math.cos(theta);
+            let x = r * Math.cos(theta) * gl.canvas.height/gl.canvas.width;
             let y = r * Math.sin(theta);
             pos_tex_data[i] = x;                    // x coord
             pos_tex_data[i + 1] = y;                // y coord
